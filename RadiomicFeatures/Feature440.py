@@ -1,4 +1,4 @@
-import numpy
+import numpy as np
 from skimage.feature import greycomatrix,greycoprops
 import pywt
 
@@ -6,15 +6,15 @@ import pywt
 def FGIntensity(X):
     energy = (X**2).sum()#No.1
     maximum = X.max()#No.4
-    median = numpy.median(X)#No.7
+    median = np.median(X)#No.7
     minimum = X.min()#No.8
     rangei = maximum - minimum#No.9
     RMS = ((X**2).mean())**0.5#No.10
     standard_deviation = X.std(ddof=1)#No.12
     variance = X.var(ddof=1)#No.14
 
-    P = numpy.unique(X, return_counts=True)[1]
-    entropy = (P*numpy.log2(P)).sum()#No.2
+    P = np.unique(X, return_counts=True)[1]
+    entropy = (P*np.log2(P)).sum()#No.2
     uniformity = (P**2).sum()#No.13
 
     mean = X.mean()#No.5
@@ -35,15 +35,19 @@ def FGIntensity(X):
 
 #intensity bins of 25HU in -1000-400HU, 56 gray levels
 def ResampleIntensity(X):
+    lmin = min(X.shape[0],X.shape[1])
+    X = X[0:lmin,0:lmin]
+    if (X.shape[0]%2 == 1):
+        X = X[1:,1:]
     temp = X.copy()
     temp[temp<-1000] = -1000
     bins = range(-1000,400,25)
-    return numpy.digitize(temp,bins)-1
+    return np.digitize(temp,bins)-1
 
 #Get Gray Level Co-occurance Matrix, a mean result of 4 directions at offset=1
 def GLCM(X):
     X = ResampleIntensity(X)
-    return greycomatrix(X, [1], [0, numpy.pi/4, numpy.pi/2, 3*numpy.pi/4], levels=56, symmetric=True, normed=True)
+    return greycomatrix(X, [1], [0, np.pi/4, np.pi/2, 3*np.pi/4], levels=56, normed=True)
 
 def FGGLCM(X):
     P = GLCM(X)#4D
@@ -56,109 +60,114 @@ def FGGLCM(X):
     energy = greycoprops(P, prop='ASM')#No.31
     homogeneity2 = greycoprops(P, prop='homogeneity')#No.34
 
-    maximum_probability = numpy.max(P,axis=(0,1))#No.40
+    maximum_probability = np.max(P,axis=(0,1))#No.40
 
-    I = numpy.array(range(1,Ng+1)).reshape((Ng, 1, 1, 1))
-    J = numpy.array(range(1,Ng+1)).reshape((1, Ng, 1, 1))
+    I = np.array(range(1,Ng+1)).reshape((Ng, 1, 1, 1))
+    J = np.array(range(1,Ng+1)).reshape((1, Ng, 1, 1))
 
-    autocorrelation = numpy.sum(I * J * P, axis=(0,1))#No.23
-    homogeneity1 = numpy.sum(P * 1./(1+numpy.abs(I-J)), axis=(0,1))#No.33
-    IDN = numpy.sum(P / (1 + numpy.abs(I-J)*1./Ng), axis=(0,1))#No.38
-    IDMN = numpy.sum(P / (1 + ((I-J)*1./Ng)**2), axis=(0,1))#No.37
+    autocorrelation = np.sum(I * J * P, axis=(0,1))#No.23
+    homogeneity1 = np.sum(P * 1./(1+np.abs(I-J)), axis=(0,1))#No.33
+    IDN = np.sum(P / (1 + np.abs(I-J)*1./Ng), axis=(0,1))#No.38
+    IDMN = np.sum(P / (1 + ((I-J)*1./Ng)**2), axis=(0,1))#No.37
 
-    temp = numpy.zeros((Ng, Ng, num_dist, num_angle))
+    temp = np.zeros((Ng, Ng, num_dist, num_angle))
     mask = I!=J
     #VisibleDeprecationWarning: boolean index did not match indexed array along dimension 3; dimension is 4 but corresponding boolean dimension is 1
     temp[mask] = P[mask] * 1./((I-J)**2)[mask]
-    inverse_variance = numpy.sum(temp, axis=(0,1))#No.39
+    inverse_variance = np.sum(temp, axis=(0,1))#No.39
 
-    Px = numpy.sum(P, axis=1, keepdims=True)
-    Py = numpy.sum(P, axis=0, keepdims=True)
-    mu_x = numpy.sum(P*I, axis=1, keepdims=True)
-    mu_y = numpy.sum(P*J, axis=0, keepdims=True)
+    Px = np.sum(P, axis=1, keepdims=True)
+    Py = np.sum(P, axis=0, keepdims=True)
+    mu_x = np.sum(P*I, axis=1, keepdims=True)
+    mu_y = np.sum(P*J, axis=0, keepdims=True)
 
-    cluster_tendency = numpy.sum(((I-mu_x + J-mu_y)**2) * P, axis=(0,1))#No.26
-    cluster_shade = numpy.sum(((I-mu_x + J-mu_y)**3) * P, axis=(0,1))#No.25
-    cluster_prominence = numpy.sum(((I-mu_x + J-mu_y)**4) * P, axis=(0,1))#No.24
-    variance = numpy.sum((I-mu_x)**2 * P, axis=(0,1))#No.44
+    cluster_tendency = np.sum(((I-mu_x + J-mu_y)**2) * P, axis=(0,1))#No.26
+    cluster_shade = np.sum(((I-mu_x + J-mu_y)**3) * P, axis=(0,1))#No.25
+    cluster_prominence = np.sum(((I-mu_x + J-mu_y)**4) * P, axis=(0,1))#No.24
+    variance = np.sum((I-mu_x)**2 * P, axis=(0,1))#No.44
 
-    sigma_x = numpy.sum((I-mu_x)**2 * P,  axis=(0,1), keepdims=True)**0.5
-    sigma_y = numpy.sum((J-mu_y)**2 * P,  axis=(0,1), keepdims=True)**0.5
-
-    temp = numpy.zeros((Ng, Ng, num_dist, num_angle))
-    mask_0 = sigma_x < 1e-15
-    mask_0[sigma_y < 1e-15] = True
-    mask_1 = mask_0 == False
-    temp[mask_1] = (I*J*P-mu_x*mu_y)[mask_1] / (sigma_x*sigma_y)[mask_1]
-    correlation = numpy.sum(temp, axis=(0,1))#No.28
-
-    temp = numpy.zeros((Ng, Ng, num_dist, num_angle))
-    mask = Px>0
-    temp[mask] = Px[mask] * numpy.log2(Px[mask])
-    HX = -numpy.sum(temp, axis=(0,1))
-
-    temp = numpy.zeros((Ng, Ng, num_dist, num_angle))
-    mask = Py>0
-    temp[mask] = Py[mask] * numpy.log2(Py[mask])
-    HY = -numpy.sum(temp, axis=(0,1))
-
-    temp = numpy.zeros((Ng, Ng, num_dist, num_angle))
-    mask = P>0
-    temp[mask] = P[mask] * numpy.log2(P[mask])
-    HXY = -numpy.sum(temp, axis=(0,1))
-
-    temp = numpy.zeros((Ng, Ng, num_dist, num_angle))
-    mask = (Px*Py)>0
-    temp[mask] = P[mask] * numpy.log((Px*Py)[mask])
-    HXY1 = -numpy.sum(temp, axis=(0,1))
-
-    temp = numpy.zeros((Ng, Ng, num_dist, num_angle))
-    mask = (Px*Py)>0
-    temp[mask] = (Px*Py)[mask] * numpy.log((Px*Py)[mask])
-    HXY2 = -numpy.sum(temp, axis=(0,1))
+    sigma_x = np.sum((I-mu_x)**2 * P,  axis=(0,1))**0.5
+    sigma_y = np.sum((J-mu_y)**2 * P,  axis=(0,1))**0.5
 
     #import pdb;pdb.set_trace()
+    temp = np.zeros((num_dist, num_angle))
+    mask = sigma_x*sigma_y > 0
+    temp[mask] = (np.sum(I*J*P-mu_x*mu_y, axis=(0,1)))[mask] / (sigma_x*sigma_y)[mask]
+    correlation = temp#No.28
+
+    temp = np.zeros((Ng, 1, num_dist, num_angle))
+    mask = Px>0
+    temp[mask] = Px[mask] * np.log2(Px[mask])
+    HX = -np.sum(temp, axis=(0,1))
+
+    temp = np.zeros((1, Ng, num_dist, num_angle))
+    mask = Py>0
+    temp[mask] = Py[mask] * np.log2(Py[mask])
+    HY = -np.sum(temp, axis=(0,1))
+
+    temp = np.zeros((Ng, Ng, num_dist, num_angle))
+    mask = P>0
+    temp[mask] = P[mask] * np.log2(P[mask])
+    HXY = -np.sum(temp, axis=(0,1))
+
+    temp = np.zeros((Ng, Ng, num_dist, num_angle))
+    mask = (Px*Py)>0
+    temp[mask] = P[mask] * np.log((Px*Py)[mask])
+    HXY1 = -np.sum(temp, axis=(0,1))
+
+    temp = np.zeros((Ng, Ng, num_dist, num_angle))
+    mask = (Px*Py)>0
+    temp[mask] = (Px*Py)[mask] * np.log((Px*Py)[mask])
+    HXY2 = -np.sum(temp, axis=(0,1))
+
     entropy = HXY#No.32
-    IMC1 = (HXY-HXY1) / numpy.max([HX,HY], axis=(0,1))#No.35
-    IMC2 = (1 - numpy.e**(-2*(HXY2-HXY)))**0.5#No.36
 
-    i, j = numpy.ogrid[1:Ng+1, 1:Ng+1]
+    #import pdb;pdb.set_trace()
+    temp = np.zeros((num_dist, num_angle))
+    mask = np.max([HX,HY],0)>0
+    temp[mask] = (HXY-HXY1)[mask] / np.max([HX,HY],0)[mask]
+    IMC1 = temp#No.35
+    temp = np.zeros((num_dist, num_angle))
+    mask = (HXY2-HXY)>0
+    temp[mask] = (1 - np.e**(-2*(HXY2-HXY)[mask]))**0.5
+    IMC2 = temp#No.36
 
-    kValuesSum = numpy.arange(2, (Ng * 2) + 1)
-    kValuesDiff = numpy.arange(0, Ng)
-    PxAddy = numpy.array([numpy.sum(P[i+j==k], 0) for k in kValuesSum])
-    PxSuby = numpy.array([numpy.sum(P[numpy.abs(i-j)==k], 0) for k in kValuesDiff])
+    i, j = np.ogrid[1:Ng+1, 1:Ng+1]
 
-    temp = numpy.zeros((2*Ng-1, num_dist, num_angle))
+    kValuesSum = np.arange(2, (Ng * 2) + 1)
+    kValuesDiff = np.arange(0, Ng)
+    PxAddy = np.array([np.sum(P[i+j==k], 0) for k in kValuesSum])
+    PxSuby = np.array([np.sum(P[np.abs(i-j)==k], 0) for k in kValuesDiff])
+
+    temp = np.zeros((2*Ng-1, num_dist, num_angle))
     mask = PxAddy>0
-    temp[mask] = PxAddy[mask] * numpy.log2(PxAddy[mask])
-    sum_entropy = -numpy.sum(temp, 0)#No.42
+    temp[mask] = PxAddy[mask] * np.log2(PxAddy[mask])
+    sum_entropy = -np.sum(temp, 0)#No.42
 
-    temp = numpy.zeros((Ng, num_dist, num_angle))
+    temp = np.zeros((Ng, num_dist, num_angle))
     mask = PxSuby>0
-    temp[mask] = PxSuby[mask] * numpy.log2(PxSuby[mask])
-    difference_entropy = -numpy.sum(temp, 0)#No.29
+    temp[mask] = PxSuby[mask] * np.log2(PxSuby[mask])
+    difference_entropy = -np.sum(temp, 0)#No.29
 
-    sum_average = numpy.sum((kValuesSum.reshape((2*Ng-1,1,1)) * PxAddy), 0)#No.41
-    SA = numpy.sum((kValuesSum.reshape((2*Ng-1,1,1)) * PxAddy), 0, keepdims=True)
-    sum_variance = numpy.sum((PxAddy * ((kValuesSum.reshape((2*Ng-1,1,1)) - SA) ** 2)), 0)#No.43
+    sum_average = np.sum((kValuesSum.reshape((2*Ng-1,1,1)) * PxAddy), 0)#No.41
+    SA = np.sum((kValuesSum.reshape((2*Ng-1,1,1)) * PxAddy), 0, keepdims=True)
+    sum_variance = np.sum((PxAddy * ((kValuesSum.reshape((2*Ng-1,1,1)) - SA) ** 2)), 0)#No.43
 
-    #result = [autocorrelation,cluster_prominence,cluster_shade,cluster_tendency,contrast,correlation,difference_entropy,dissimilarity,energy,entropy,homogeneity1,homogeneity2,IMC1,IMC2,IDMN,IDN,inverse_variance,maximum_probability,sum_average,sum_entropy,sum_variance,variance]
-    result = [autocorrelation,cluster_prominence,cluster_shade,cluster_tendency,contrast,correlation,dissimilarity,energy,entropy,homogeneity1,homogeneity2]#,IMC1,IDMN,IDN,inverse_variance,maximum_probability,sum_average,sum_entropy,sum_variance,variance]
+    result = [autocorrelation,cluster_prominence,cluster_shade,cluster_tendency,contrast,correlation,difference_entropy,dissimilarity,energy,entropy,homogeneity1,homogeneity2,IMC1,IMC2,IDMN,IDN,inverse_variance,maximum_probability,sum_average,sum_entropy,sum_variance,variance]
 
     return [item.mean() for item in result]
 ###eg.
-##X = numpy.array([[1,2,5,2,3],[3,2,1,3,1],[1,3,5,5,2],[1,1,1,1,2],[1,2,4,3,5]])-1
+##X = np.array([[1,2,5,2,3],[3,2,1,3,1],[1,3,5,5,2],[1,1,1,1,2],[1,2,4,3,5]])-1
 ##rf = FGGLCM(X)
 
 def GLRLM(X):
     X = ResampleIntensity(X)
     (Nr,Nr1) = X.shape
-    Ng = X.max()-X.min()+1
+    Ng = 56
 
     #theta = 0, pi/4, pi/2, 3*pi/4
-    P = numpy.zeros((Ng,Nr,4),dtype=numpy.uint)
-
+    P = np.zeros((Ng,Nr,4))
+    #import pdb;pdb.set_trace()
     #theta = 0, offset as (0,1)
     for i in range(Nr):
         jprev = 0
@@ -239,37 +248,41 @@ def FGGLRLM(X):
     P = GLRLM(X)
     (Ng,Nr,num_angle) = P.shape
 
-    sum_all = numpy.sum(P,axis=(0,1))
+    sum_all = np.sum(P,axis=(0,1))
 
-    GLN = numpy.sum((numpy.sum(P,axis=1))**2,axis=0)*1./sum_all#No.47
-    RLN = numpy.sum((numpy.sum(P,axis=0))**2,axis=0)*1./sum_all#No.48
+    GLN = np.sum((np.sum(P,axis=1))**2,axis=0)*1./sum_all#No.47
+    RLN = np.sum((np.sum(P,axis=0))**2,axis=0)*1./sum_all#No.48
     RP = sum_all*1./(Nr**2)#No.49
 
-    I = numpy.array(range(1,Ng+1)).reshape((Ng, 1, 1))
-    J = numpy.array(range(1,Nr+1)).reshape((1, Nr, 1))
+    I = np.array(range(1,Ng+1)).reshape((Ng, 1, 1))
+    J = np.array(range(1,Nr+1)).reshape((1, Nr, 1))
 
-    SRE = numpy.sum((P*1./(J**2)),axis=(0,1))/sum_all#No.45
-    LRE = numpy.sum((P*(J**2)),axis=(0,1))*1./sum_all#No.46
+    SRE = np.sum((P*1./(J**2)),axis=(0,1))/sum_all#No.45
+    LRE = np.sum((P*(J**2)),axis=(0,1))*1./sum_all#No.46
 
-    LGLRE = numpy.sum((P*1./(I**2)),axis=(0,1))/sum_all#No.50
-    HGLRE = numpy.sum((P*(I**2)),axis=(0,1))*1./sum_all#No.51
+    LGLRE = np.sum((P*1./(I**2)),axis=(0,1))/sum_all#No.50
+    HGLRE = np.sum((P*(I**2)),axis=(0,1))*1./sum_all#No.51
 
-    SRLGLE = numpy.sum((P*1./((I*J)**2)),axis=(0,1))/sum_all#No.52
-    SRHGLE = numpy.sum((P*(I**2)*1./(J**2)),axis=(0,1))*1./sum_all#No.53
+    SRLGLE = np.sum((P*1./((I*J)**2)),axis=(0,1))/sum_all#No.52
+    SRHGLE = np.sum((P*(I**2)*1./(J**2)),axis=(0,1))*1./sum_all#No.53
 
-    LRLGLE = numpy.sum((P*(J**2)*1./(I**2)),axis=(0,1))*1./sum_all#No.54
-    LRHGLE = numpy.sum((P*(I**2)*(J**2)),axis=(0,1))*1./sum_all#No.55
+    LRLGLE = np.sum((P*(J**2)*1./(I**2)),axis=(0,1))*1./sum_all#No.54
+    LRHGLE = np.sum((P*(I**2)*(J**2)),axis=(0,1))*1./sum_all#No.55
 
     result = [SRE,LRE,GLN,RLN,RP,LGLRE,HGLRE,SRLGLE,SRHGLE,LRLGLE,LRHGLE]
     return [item.mean() for item in result]
 
 ###eg.
-##X = numpy.array([[5,2,5,4],[3,3,3,1],[2,1,1,1],[4,2,2,2]])-1
+##X = np.array([[5,2,5,4],[3,3,3,1],[2,1,1,1],[4,2,2,2]])-1
 ##rf = FGGLRLM(X)
 
 #Group 4: Wavelet features
-def WT(data):
-    coeffs = pywt.swt2(data,'coif1',1)
+def WT(X):
+    lmin = min(X.shape[0],X.shape[1])
+    X = X[0:lmin,0:lmin]
+    if (X.shape[0]%2 == 1):
+        X = X[1:,1:]
+    coeffs = pywt.swt2(X,'coif1',1)
     return coeffs[0]
 
 def FGIT(X):
@@ -279,45 +292,25 @@ def FGWavelet(X):
     LL,(HL,LH,HH) = WT(X)
     return FGIT(LL)+FGIT(HL)+FGIT(LH)+FGIT(HH)
 
-###eg.
-##X = numpy.ones((40,40),dtype=numpy.uint);X[:,0]=0
-##import pdb;pdb.set_trace()
-##rf = FGIT(X)
+def FG(X):
+    return FGIT(X)+FGWavelet(X)
 
-#Calculate IOU
-def IOU_LND(ReOP,ww,GTframe):
-    x1 = ReOP[0]
-    y1 = ReOP[1]
-    width1 = ww
-    height1 = ww
+#FGIT_NAME='energy,entropy,kurtosis,maximum,mean,mean_absolute_deviation,median,minimum,range,RMS,skewness,standard_deviation,uniformity,variance,autocorrelation,cluster_prominence,cluster_shade,cluster_tendency,contrast,correlation,difference_entropy,dissimilarity,energy,entropy,homogeneity1,homogeneity2,IMC1,IMC2,IDMN,IDN,inverse_variance,maximum_probability,sum_average,sum_entropy,sum_variance,variance_GLCM,SRE,LRE,GLN,RLN,RP,LGLRE,HGLRE,SRLGLE,SRHGLE,LRLGLE,LRHGLE'
 
-    x2 = GTframe[0]
-    y2 = GTframe[1]
-    width2 = GTframe[2]-GTframe[0]
-    height2 = GTframe[3]-GTframe[1]
 
-    endx = max(x1+width1,x2+width2)
-    startx = min(x1,x2)
-    width = width1+width2-(endx-startx)
-
-    endy = max(y1+height1,y2+height2)
-    starty = min(y1,y2)
-    height = height1+height2-(endy-starty)
-
-    if width <=0 or height <= 0:
-        ratio = 0
-        ratio2 = 0
-    else:
-        Area = width*height
-        Area1 = width1*height1
-        Area2 = width2*height2
-        ratio = Area*1./Area2
-        ratio = ratio*max(width2*1./width1,1)*max(height2*1./height1,1)
-
-    return ratio
+def GetFGName():
+    FGIT_NAME = 'energy,entropy,kurtosis,maximum,mean,mean_absolute_deviation,median,minimum,range,RMS,skewness,standard_deviation,uniformity,variance,autocorrelation,cluster_prominence,cluster_shade,cluster_tendency,contrast,correlation,difference_entropy,dissimilarity,energy,entropy,homogeneity1,homogeneity2,IMC1,IMC2,IDMN,IDN,inverse_variance,maximum_probability,sum_average,sum_entropy,sum_variance,variance_GLCM,SRE,LRE,GLN,RLN,RP,LGLRE,HGLRE,SRLGLE,SRHGLE,LRLGLE,LRHGLE'
+    FGIT_NAME_LIST = FGIT_NAME.split(',')
+    FGW_NAME_LIST = [item+'_LL' for item in FGIT_NAME_LIST]+[item+'_HL' for item in FGIT_NAME_LIST]+[item+'_LH' for item in FGIT_NAME_LIST]+[item+'_HH' for item in FGIT_NAME_LIST]
+    FG_NAME_LIST = FGIT_NAME_LIST+FGW_NAME_LIST
+    FG_NAME = ','.join(FG_NAME_LIST)
+    return FG_NAME
 
 ###==================================================================================
 ###                Above is Fang Xiang's work, I use an encapsulation of them
 ###==================================================================================
 def featuresV1(X):
     return FGIntensity(X)
+
+def featuresV2(X):
+    return FG(X)
