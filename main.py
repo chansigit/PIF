@@ -7,7 +7,6 @@ from matplotlib.widgets import RectangleSelector
 import pylab
 import os
 
-
 # =================================================================================
 #                                Get CT Image
 # =================================================================================
@@ -40,6 +39,12 @@ pixel_HU = get_pixels_HU([slice])[0]
 ct_data = pixel_HU
 
 featurePath=os.path.basename(dcmPath)+".csv"
+plt.switch_backend('Qt4Agg')
+plt.figure(figsize=(24, 17),num="Python Image Features: Allright Reserved by XGlab - Current File=%s"%featurePath)
+
+thismanager = plt.get_current_fig_manager()
+from PyQt4 import QtGui
+thismanager.window.setWindowIcon(QtGui.QIcon((os.path.join('res','shepherd.png'))))
 
 # =================================================================================
 #                                Extracted Window
@@ -64,30 +69,31 @@ extractedWindowHub = []
 # =================================================================================
 #                                   Text Box
 # =================================================================================
-textAx = plt.subplot2grid( (3,4), (0,3), rowspan=2,colspan=1)
-textIndent = 0.25
-linePos    = 29
-xlim, ylim = (10,30)
-textAx.axis([0,xlim, 0,ylim])
+txtAx = plt.subplot2grid( (3,4), (0,3), rowspan=2,colspan=1)
+txtAx.set_title("windows extracted", fontsize=30)
+txtAx.title.set_position([.5, 1.05])
+xlim,ylim=(10,30)
+txtAx.axis([0, xlim, 0, ylim])
+textIndent=0.75
+linePos=29
 
 def addMessage(str):
     global linePos
-    global textAx
-    textAx.text(textIndent, linePos, str, fontsize=12)
+    global txtAx
+    txtAx.text(textIndent, linePos, str, fontsize=12)
     linePos= (linePos-1 +ylim) % ylim
-    plt.show()
 
 # =================================================================================
 #                                Rectangle Selector
 # =================================================================================
 from matplotlib.widgets import RectangleSelector
 import numpy as np
-import matplotlib.pyplot as plt
 
 def line_select_callback(eclick, erelease):
     'eclick and erelease are the press and release events'
     toggle_selector.RS.set_active(False) # disable 'Q' to avoid unintended rectangle saving
     print("   未选择")
+
 
 
 def toggle_selector(event):
@@ -100,12 +106,15 @@ def toggle_selector(event):
         xmax,ymax=toggle_selector.RS.extents[1], toggle_selector.RS.extents[3]
         #xmin,ymin=(374.36,282.10)
         #xmax,ymax=(384.33,298.72)
+        if int(xmin)==int(xmax) or int(ymin)==int(ymax):
+            print("   未选择")
+            return
         print("   选择成功: 左上(%.2f,%.2f) 右下(%.2f,%.2f)"%(xmin,ymin,xmax,ymax))
         #selectedWin=ExtractedWindow(topleft=(xmin,ymax), downright=(xmax,ymin), slice=ct_data)
         selectedWin=ExtractedWindow(topleft=(xmin,ymin), downright=(xmax,ymax), slice=ct_data)
         extractedWindowHub.append(selectedWin)
         extractedWindowHub = list(set(extractedWindowHub))
-        #addMessage(str(selectedWin))
+        addMessage(str(selectedWin))
 
     if event.key in ['A', 'a'] and not toggle_selector.RS.active:
         #print(' RectangleSelector activated.')
@@ -113,24 +122,15 @@ def toggle_selector(event):
         toggle_selector.RS.set_active(True)
 
 
-plt.switch_backend('Qt4Agg')
-fig = plt.figure(figsize=(12,8), num="Python Image Features: Allright Reserved by XGlab - Current File=%s"%featurePath)
-
-
-thismanager = plt.get_current_fig_manager()
-from PyQt4 import QtGui
-thismanager.window.setWindowIcon(QtGui.QIcon((os.path.join('res','shepherd.png'))))
-
-#ax = fig.add_subplot(111)
-#ax = fig.add_subplot(1,2,1)
-ax = plt.subplot2grid( (3,4), (0,0), rowspan=3,colspan=3)
-ax.set_xlabel('X-Axis')
-ax.set_ylabel('Y-Axis')
-ax.set_title('Press A to select, press Q when finished')
-line, = ax.plot([], [], linestyle="none", marker="o", color="r")
+imgAx = plt.subplot2grid((3, 4), (0, 0), rowspan=3, colspan=3)
+imgAx.set_xlabel('X-Axis')
+imgAx.set_ylabel('Y-Axis')
+imgAx.set_title('Press A to select, press Q when finished',fontsize=30)
+imgAx.title.set_position([.5, 1.05])
+line, = imgAx.plot([], [], linestyle="none", marker="o", color="r")
 plt.imshow(ct_data, cmap=pylab.cm.bone,interpolation='nearest')
 
-toggle_selector.RS = RectangleSelector(ax, line_select_callback,
+toggle_selector.RS = RectangleSelector(imgAx, line_select_callback,
                                        drawtype='box', useblit=True,
                                        button=[1, 3],  # don't use middle button
                                        minspanx=5, minspany=5,
@@ -156,8 +156,6 @@ def onCalcClicked(event):
     for win in extractedWindowHub:
         print(win)
         featureVector=win.getFeatures()
-        #print(len(featureVector))
-        #print(featureVector)
         lineTxt=[str(win)] + featureVector
         csvLines.append(lineTxt)
 
@@ -168,23 +166,32 @@ def onCalcClicked(event):
     csvHeader="WindowPos,"+ ",".join(GetFGNameList())
     np.savetxt(featurePath, csvLines,fmt='%s',delimiter=',',header=csvHeader)
     print("   特征提取完成")
-
+    global txtAx
+    txtAx.figure.canvas.draw()
 
 def onResetClicked(event):
     global extractedWindowHub
     extractedWindowHub=[]
     print(">  归零")
     btnReset.ax.figure.canvas.draw()
+    global txtAx
+    global linePos
+    txtAx.clear()
+    txtAx.set_title("Windows Extracted", fontsize=30)
+    txtAx.title.set_position([.5, 1.05])
+    txtAx.figure.canvas.draw()
+    linePos=29
 
-
-axCalc = plt.axes([0.35, 0.03, 0.07, 0.035])
-axReset = plt.axes([0.55, 0.03, 0.07, 0.035])
+axCalc = plt.axes([0.75, 0.23, 0.09, 0.04])
+axReset = plt.axes([0.75, 0.17, 0.09, 0.04])
 
 # CAUTION! We must specify color and hovercolor with the same value explicitly,
 # otherwise the hover-over event will cause a unwanted redraw.
 btnCalc = Button(axCalc,   'Compute',color='0.85', hovercolor='0.85')
+btnCalc.label.set_fontsize(25)
 # And we hope to clear the previous rectangles here, so we choose a sligly different hovercolor
 btnReset = Button(axReset, 'Reset',color='0.85', hovercolor='0.85')
+btnReset.label.set_fontsize(25)
 btnCalc.on_clicked(onCalcClicked)
 btnReset.on_clicked(onResetClicked)
 
