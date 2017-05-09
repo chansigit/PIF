@@ -11,7 +11,6 @@ import os
 # =================================================================================
 #                                Get CT Image
 # =================================================================================
-from RadiomicFeatures.Feature440 import GetFGName
 def get_pixels_HU(slices):
     image = np.stack([s.pixel_array for s in slices])
     # Convert to int16 (from sometimes int16),
@@ -42,17 +41,16 @@ ct_data = pixel_HU
 
 featurePath=os.path.basename(dcmPath)+".csv"
 
-
 # =================================================================================
 #                                Extracted Window
 # =================================================================================
-from RadiomicFeatures.Feature440 import featuresV2
+from RadiomicFeatures.Feature235 import featuresV2
 class ExtractedWindow:
     def __init__(self, topleft, downright, slice):
         self.topleft, self.downright=topleft, downright
         x0,y0 = int(topleft[0]),int(topleft[1])
         x1,y1 = int(downright[0]),int(downright[1])
-        self.pixel=slice[y0:y1, x0:x1].astype(np.float32)
+        self.pixel=slice[y0:y1, x0:x1].astype(np.float64)
 
     def getFeatures(self):
         return featuresV2(self.pixel)
@@ -60,11 +58,28 @@ class ExtractedWindow:
     def __str__(self):
         return "(%.2f;%.2f)->(%.2f;%.2f)"% (self.topleft[0],self.topleft[1],self.downright[0],self.downright[1])
 
+extractedWindowHub = []
+
+
+# =================================================================================
+#                                   Text Box
+# =================================================================================
+textAx = plt.subplot2grid( (3,4), (0,3), rowspan=2,colspan=1)
+textIndent = 0.25
+linePos    = 29
+xlim, ylim = (10,30)
+textAx.axis([0,xlim, 0,ylim])
+
+def addMessage(str):
+    global linePos
+    global textAx
+    textAx.text(textIndent, linePos, str, fontsize=12)
+    linePos= (linePos-1 +ylim) % ylim
+    plt.show()
 
 # =================================================================================
 #                                Rectangle Selector
 # =================================================================================
-extractedWindowHub = []
 from matplotlib.widgets import RectangleSelector
 import numpy as np
 import matplotlib.pyplot as plt
@@ -90,6 +105,7 @@ def toggle_selector(event):
         selectedWin=ExtractedWindow(topleft=(xmin,ymin), downright=(xmax,ymax), slice=ct_data)
         extractedWindowHub.append(selectedWin)
         extractedWindowHub = list(set(extractedWindowHub))
+        #addMessage(str(selectedWin))
 
     if event.key in ['A', 'a'] and not toggle_selector.RS.active:
         #print(' RectangleSelector activated.')
@@ -105,7 +121,11 @@ thismanager = plt.get_current_fig_manager()
 from PyQt4 import QtGui
 thismanager.window.setWindowIcon(QtGui.QIcon((os.path.join('res','shepherd.png'))))
 
-ax = fig.add_subplot(111)
+#ax = fig.add_subplot(111)
+#ax = fig.add_subplot(1,2,1)
+ax = plt.subplot2grid( (3,4), (0,0), rowspan=3,colspan=3)
+ax.set_xlabel('X-Axis')
+ax.set_ylabel('Y-Axis')
 ax.set_title('Press A to select, press Q when finished')
 line, = ax.plot([], [], linestyle="none", marker="o", color="r")
 plt.imshow(ct_data, cmap=pylab.cm.bone,interpolation='nearest')
@@ -124,6 +144,7 @@ plt.connect('key_press_event', toggle_selector)
 #                        Calculate Features and Output
 # =================================================================================
 from matplotlib.widgets import Button
+from RadiomicFeatures.Feature235 import GetFGNameList
 
 def onCalcClicked(event):
     global extractedWindowHub
@@ -144,9 +165,7 @@ def onCalcClicked(event):
         os.remove(featurePath)
     except OSError:
         pass
-
-    csvHeader="WindowPos,"+GetFGName()
-
+    csvHeader="WindowPos,"+ ",".join(GetFGNameList())
     np.savetxt(featurePath, csvLines,fmt='%s',delimiter=',',header=csvHeader)
     print("   特征提取完成")
 
@@ -170,5 +189,3 @@ btnCalc.on_clicked(onCalcClicked)
 btnReset.on_clicked(onResetClicked)
 
 plt.show()
-
-pylab.show()
