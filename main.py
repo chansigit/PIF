@@ -97,10 +97,15 @@ def toggle_selector(event):
         toggle_selector.RS.set_active(True)
 
 
-
+plt.switch_backend('Qt4Agg')
 fig = plt.figure(figsize=(12,8), num="Python Image Features: Allright Reserved by XGlab - Current File=%s"%featurePath)
+
+#from Tkinter import PhotoImage
 thismanager = plt.get_current_fig_manager()
-thismanager.window.wm_iconbitmap("microscope.ico")
+#iconImg = PhotoImage(file="microscope.ico")
+#thismanager.window.tk.call('wm', 'iconphoto', thismanager.window._w, iconImg)
+#thismanager.window.wm_iconbitmap("microscope.ico")
+
 ax = fig.add_subplot(111)
 ax.set_title('Press A to select, press Q when finished')
 line, = ax.plot([], [], linestyle="none", marker="o", color="r")
