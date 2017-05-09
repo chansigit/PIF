@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import RectangleSelector
 import pylab
 import os
+
+
 # =================================================================================
 #                                Get CT Image
 # =================================================================================
@@ -39,6 +41,8 @@ pixel_HU = get_pixels_HU([slice])[0]
 ct_data = pixel_HU
 
 featurePath=os.path.basename(dcmPath)+".csv"
+
+
 # =================================================================================
 #                                Extracted Window
 # =================================================================================
@@ -56,6 +60,7 @@ class ExtractedWindow:
     def __str__(self):
         return "(%.2f;%.2f)->(%.2f;%.2f)"% (self.topleft[0],self.topleft[1],self.downright[0],self.downright[1])
 
+
 # =================================================================================
 #                                Rectangle Selector
 # =================================================================================
@@ -72,7 +77,7 @@ def line_select_callback(eclick, erelease):
 
 def toggle_selector(event):
     global extractedWindowHub
-    #print(' Key pressed.')
+
     if event.key in ['Q', 'q'] and toggle_selector.RS.active:
         #print(' RectangleSelector deactivated.')
         toggle_selector.RS.set_active(False)
@@ -110,8 +115,6 @@ toggle_selector.RS = RectangleSelector(ax, line_select_callback,
 toggle_selector.RS.set_active(False)
 plt.connect('key_press_event', toggle_selector)
 
-
-#plt.show()
 
 # =================================================================================
 #                        Calculate Features and Output
@@ -164,3 +167,4 @@ btnReset.on_clicked(onResetClicked)
 
 plt.show()
 
+pylab.show()
