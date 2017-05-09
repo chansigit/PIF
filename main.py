@@ -100,11 +100,10 @@ def toggle_selector(event):
 plt.switch_backend('Qt4Agg')
 fig = plt.figure(figsize=(12,8), num="Python Image Features: Allright Reserved by XGlab - Current File=%s"%featurePath)
 
-#from Tkinter import PhotoImage
+
 thismanager = plt.get_current_fig_manager()
-#iconImg = PhotoImage(file="microscope.ico")
-#thismanager.window.tk.call('wm', 'iconphoto', thismanager.window._w, iconImg)
-#thismanager.window.wm_iconbitmap("microscope.ico")
+from PyQt4 import QtGui
+thismanager.window.setWindowIcon(QtGui.QIcon((os.path.join('res','shepherd.png'))))
 
 ax = fig.add_subplot(111)
 ax.set_title('Press A to select, press Q when finished')
