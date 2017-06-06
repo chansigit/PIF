@@ -1,5 +1,8 @@
+conda install numpy
+conda install scipy
+pip install matplotlib
 pip install PyQt5
 pip install pip install PyQt4-4.11.4-cp35-cp35m-win_amd64.whl  [ from http://www.lfd.uci.edu/~gohlke/pythonlibs/#pyqt4 ]
 pip install pydicom
 pip install PyWavelets
-pip install scikit-image
+conda install scikit-image
