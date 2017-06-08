@@ -39,12 +39,14 @@ pixel_HU = get_pixels_HU([slice])[0]
 ct_data = pixel_HU
 
 featurePath=os.path.basename(dcmPath)+".csv"
-plt.switch_backend('Qt4Agg')
-plt.figure(figsize=(24, 17),num="Python Image Features: Allright Reserved by XGlab - Current File=%s"%featurePath)
+#plt.switch_backend('Qt4Agg')
+#plt.figure(figsize=(24, 17),num="Python Image Features: Allright Reserved by XGlab - Current File=%s"%featurePath)
+#plt.figure(figsize=(24, 17),num="Python Image Features: Allright Reserved by XGlab - Current File=%s"%featurePath)
+#plt.figure()
 
-thismanager = plt.get_current_fig_manager()
-from PyQt4 import QtGui
-thismanager.window.setWindowIcon(QtGui.QIcon((os.path.join('res','shepherd.png'))))
+#thismanager = plt.get_current_fig_manager()
+#from PyQt4 import QtGui
+#thismanager.window.setWindowIcon(QtGui.QIcon((os.path.join('res','shepherd.png'))))
 
 # =================================================================================
 #                                Extracted Window
