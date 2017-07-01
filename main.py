@@ -130,7 +130,13 @@ imgAx.set_ylabel('Y-Axis')
 imgAx.set_title('Press A to select, press Q when finished',fontsize=30)
 imgAx.title.set_position([.5, 1.05])
 line, = imgAx.plot([], [], linestyle="none", marker="o", color="r")
-plt.imshow(ct_data, cmap=pylab.cm.bone,interpolation='nearest')
+
+import matplotlib
+# we can set windows-size and window-level here
+# lung-window
+#plt.imshow(ct_data, cmap=pylab.cm.bone, interpolation='nearest')
+# liver-window
+plt.imshow(ct_data, cmap=pylab.cm.gray, norm=matplotlib.colors.Normalize(vmin=-15, vmax=155, clip=True), interpolation='nearest')
 
 toggle_selector.RS = RectangleSelector(imgAx, line_select_callback,
                                        drawtype='box', useblit=True,
